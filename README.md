@@ -318,10 +318,10 @@ These are deposits, not fees — they are recoverable if the accounts are closed
 
 ```bash
 # Anchor version manager
-avm install 0.32.0 && avm use 0.32.0
+avm install 0.32.1 && avm use 0.32.1
 
 # Solana CLI
-solana --version  # should be 2.x
+solana --version  # should be > 2.x
 
 # Bun (for tests)
 curl -fsSL https://bun.sh/install | bash
@@ -330,14 +330,10 @@ curl -fsSL https://bun.sh/install | bash
 ### Install and build
 
 ```bash
-git clone https://github.com/your-username/trolley
+git clone https://github.com/Nitish-bot/trolley
 cd trolley
-bun install
 
-# Fix known Anchor 0.32.0 dependency conflicts
-cargo update base64ct --precise 1.6.0
-cargo update constant_time_eq --precise 0.4.1
-cargo update blake3 --precise 1.5.5
+bun install
 
 anchor build
 ```
@@ -346,7 +342,21 @@ anchor build
 
 ```bash
 # Reads target/idl/trolley.json and writes dist/js-client/
-npx ts-node create-codama-client.ts
+bun run generate
+```
+
+### To deploy yourself:
+
+```bash
+# Point Solana CLI at devnet
+solana config set --url devnet
+
+# Fund your deploy wallet
+solana airdrop 2
+
+# Build and deploy
+anchor build
+anchor deploy --provider.cluster devnet
 ```
 
 ---
@@ -359,57 +369,18 @@ Tests run against a local validator spun up by `anchor test`. The suite covers t
 anchor test
 ```
 
-To run against devnet with your own keypair:
+To run against devnet with your own keypair, setup the environment variables and run:
 
 ```bash
-CLUSTER=devnet KEYPAIR_BYTES="[1,2,3,...]" bun test
+bun test:devnet
 ```
 
-### Test coverage
+NOTE: The 'devnet' cluster can get rate limited. If you encounter issues, try testing with 'helius-devnet' instead.
 
-```
-rbac (trolley)
-  initialize_application
-    ✓ super admin can initialize an application
-    ✓ ApplicationAccount has correct authority and zero counts
-    ✓ cannot initialize the same application twice
-  add_resource
-    ✓ super admin can add the 'posts' resource (index 0)
-    ✓ super admin can add the 'users' resource (index 1)
-    ✓ non-admin cannot add a resource (has_one constraint rejects)
-  create_role
-    ✓ super admin can create the 'editor' role (role_index = 0)
-    ✓ editor role has role_index 0 and correct permissions bitmask
-    ✓ ApplicationAccount role_count increments to 1
-    ✓ super admin can create the 'viewer' role (role_index = 1)
-    ✓ role_count is now 2 on the ApplicationAccount
-  update_role_permissions
-    ✓ super admin can update editor permissions to posts-only
-    ✓ can restore editor permissions back to full
-  create_user
-    ✓ super admin can create a UserAccount for alice
-    ✓ alice's UserAccount starts with roles = 0n (no roles)
-    ✓ super admin can create a UserAccount for bob
-  grant_role
-    ✓ super admin can grant the 'editor' role to alice
-    ✓ super admin can also grant the 'viewer' role to alice
-    ✓ granting an already-held role is idempotent
-  revoke_role
-    ✓ super admin can revoke the 'viewer' role from alice
-    ✓ revoking a role alice doesn't hold is idempotent
-  check_authorization
-    ✓ alice IS authorized for 'editor' → silent Ok(())
-    ✓ alice is NOT authorized for 'viewer' → error 6000 Unauthorized
-    ✓ bob (no roles at all) fails check for 'editor' → error 6000
-    ✓ check fails after role is revoked — auth is not cached
-  deactivate_role
-    ✓ super admin can deactivate the 'viewer' role
-    ✓ check_authorization against an inactive role → error 6001 RoleInactive
-    ✓ grant_role against an inactive role also fails with 6001
-  bitmask correctness
-    ✓ two distinct roles set two distinct bits and clear independently
-    ✓ editor permissions bitmask covers exactly bits 0 and 1
-    ✓ viewer permissions bitmask covers exactly bit 0
+To run against the Helius devnet, use:
+
+```bash
+bun test:helius
 ```
 
 ---
@@ -420,29 +391,10 @@ rbac (trolley)
 
 | Transaction | Description | Explorer |
 |---|---|---|
-| Program deploy | Initial deployment to devnet | [View](#) |
-| initialize_application | Created `my-app` application | [View](#) |
-| add_resource × 2 | Registered `posts` and `users` resources | [View](#) |
-| create_role × 2 | Created `editor` and `viewer` roles | [View](#) |
-| create_user | Created UserAccount for test wallet | [View](#) |
-| grant_role | Granted `editor` role to test wallet | [View](#) |
-| check_authorization | Authorization check — passed silently | [View](#) |
-
-> Replace the `[View](#)` links with your actual Solana Explorer links after deploying.
-
-To deploy yourself:
-
-```bash
-# Point Solana CLI at devnet
-solana config set --url devnet
-
-# Fund your deploy wallet
-solana airdrop 2
-
-# Build and deploy
-anchor build
-anchor deploy
-
-# Update the program address in lib.rs and Anchor.toml, then rebuild
-anchor build && anchor deploy
-```
+| initialize_application | Created `my-app` application | [View](https://explorer.solana.com/tx/67iNFCpcmZ9xQ89EPSZtzCvNkWUwQNac6n9e6Fp2VTzxHZG5926eYKYyT2F7MiYDmL9bKybVvUNDPY3YoFVnkudG?cluster=devnet) |
+| add_resource | Registered `posts` and `users` resources | [View](https://explorer.solana.com/tx/3V5FGdgHU9gNWfoZMhvGjRyyvQTYYZ6uQDWHq1oJSL3bcgc2AmXW9fzuyKeWt3EXpnTVoKoQtivX7sQQ3g6wgbNi?cluster=devnet) |
+| create_role | Created `editor` and `viewer` roles | [View](https://explorer.solana.com/tx/44qrw1Ud7ewqieJmhNmvuhp42eEQz1wSuTfM6djC3pniBUmjK2Ctsf2eTQcVdj1tLJDibeFnRXNhdpCLXHvCiPjz?cluster=devnet) |
+| create_user | Created UserAccount for test wallet | [View](https://explorer.solana.com/tx/jwxAhkX25v4fWfXnHbt9EMdMqUqTVsUKg5poji1PUcnpyM6CHuzDE7Nffp1stQmtiGUNXsVwnKnktcXZPMrorT2?cluster=devnet) |
+| grant_role | Granted `editor` role to test wallet | [View](https://explorer.solana.com/tx/2F9ZEHCrsuhHYFAEmzHYzKGSGcURuXsEPFW7PwqxUDWzRGhjPpAT8xqJ7ytpRHz1Zq7wTa8p8eLR3gVJ7ReMMLpv?cluster=devnet) |
+| check_authorization (passing) | Authorization check — passed silently | [View](https://explorer.solana.com/tx/3UkYvfHuYtCnvaC9w8Ztkd66PTW1fe8JdFLhcL4qSsUSKYzZd9XJiWi3fafDwMxfo8V1wFJYzcPrLzPt7MHZDAJF?cluster=devnet) |
+| check_authorization (failing) | Authorization check — passed silently | [View](https://explorer.solana.com/tx/8UDS6No5WEWutXZ5sMNQoddj998NGfyfZZbpX15wuL31uishifV9gnhbjsnFK3ZXQWHdW1ABuXFSRWELBGikEj5?cluster=devnet) |
