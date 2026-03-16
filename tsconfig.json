@@ -28,7 +28,7 @@
     
     "baseUrl": ".",
     "paths": {
-      "@client/*": ["app/client/src/generated/*"]
+      "@client/*": ["web/client/src/generated/*"]
     }
   }
 }

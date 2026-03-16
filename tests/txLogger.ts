@@ -15,7 +15,9 @@ export function initTxLog(cluster: string) {
 
 export function logTx(description: string, signature: string, cluster: string) {
   const clusterParam =
-    cluster === "localnet" ? "custom&customUrl=http%3A%2F%2Flocalhost%3A8899" : 'devnet';
+    cluster === "localnet"
+      ? "custom&customUrl=http%3A%2F%2Flocalhost%3A8899"
+      : "devnet";
   const url = `${EXPLORER_BASE}/${signature}?cluster=${clusterParam}`;
   appendFileSync(LOG_FILE, `${description} = ${url}\n`, "utf8");
 }

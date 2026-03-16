@@ -4,7 +4,7 @@
     "js": [
       {
         "from": "@codama/renderers-js",
-        "args": ["./app/client"]
+        "args": ["./web/client"]
       }
     ]
   }

@@ -119,7 +119,9 @@ describe("rbac (trolley)", async () => {
   // send() — submits a tx, logs the explorer URL, returns the signature
   let send: (
     description: string,
-    ix: Parameters<typeof connection.sendTransactionFromInstructions>[0]["instructions"][0],
+    ix: Parameters<
+      typeof connection.sendTransactionFromInstructions
+    >[0]["instructions"][0],
   ) => Promise<string>;
 
   const CLUSTER = process.env.CLUSTER || "localnet";
@@ -347,7 +349,9 @@ describe("rbac (trolley)", async () => {
           newPermissions: restrictedPerms,
         }),
       );
-      expect((await getRoleAccount(editorRolePda)).permissions).toBe(restrictedPerms);
+      expect((await getRoleAccount(editorRolePda)).permissions).toBe(
+        restrictedPerms,
+      );
 
       await send(
         "update_role_permissions (editor → restore full)",
@@ -358,7 +362,9 @@ describe("rbac (trolley)", async () => {
           newPermissions: EDITOR_PERMISSIONS,
         }),
       );
-      expect((await getRoleAccount(editorRolePda)).permissions).toBe(EDITOR_PERMISSIONS);
+      expect((await getRoleAccount(editorRolePda)).permissions).toBe(
+        EDITOR_PERMISSIONS,
+      );
     });
   });
 
@@ -368,7 +374,7 @@ describe("rbac (trolley)", async () => {
     it("creates UserAccounts with roles = 0 for each wallet", async () => {
       for (const [label, user, pda] of [
         ["alice", alice, aliceUserPda],
-        ["bob",   bob,   bobUserPda],
+        ["bob", bob, bobUserPda],
       ] as const) {
         await send(
           `create_user (${label})`,
