@@ -9,3 +9,4 @@ app/client
 app/node_modules
 app/dist
 .env
+.next
