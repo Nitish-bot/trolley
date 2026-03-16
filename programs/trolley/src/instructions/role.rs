@@ -32,12 +32,7 @@ pub struct CreateRole<'info> {
 }
 
 impl<'info> CreateRole<'info> {
-    pub fn create_role(
-        &mut self,
-        role_name: String,
-        permissions: u64,
-        bump: u8,
-    ) -> Result<()> {
+    pub fn create_role(&mut self, role_name: String, permissions: u64, bump: u8) -> Result<()> {
         require!(role_name.len() <= ROLE_NAME_LEN, RbacError::RoleNameTooLong);
 
         let mut app = self.application.load_mut()?;
