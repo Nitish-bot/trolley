@@ -1,0 +1,19 @@
+[toolchain]
+package_manager = "bun"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+trolley = "DsFnBVZwCAaW3TNzkcMGo4gbEKdNVo58MbpvVWVPvqun"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "bun test --timeout 1000000 tests/*.test.ts"

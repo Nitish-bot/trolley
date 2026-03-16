@@ -1,0 +1,11 @@
+{
+  "idl": "./target/idl/trolley.json",
+  "scripts": {
+    "js": [
+      {
+        "from": "@codama/renderers-js",
+        "args": ["./app/client"]
+      }
+    ]
+  }
+}
