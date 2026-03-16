@@ -1,6 +1,7 @@
 import {
   assertAccountExists,
   createKeyPairSignerFromBytes,
+  generateKeyPairSigner,
   getAddressEncoder,
   type Address,
   type KeyPairSigner,
@@ -26,6 +27,7 @@ import {
   getCheckAuthorizationInstruction,
 } from "@client/index";
 import { connect, getPDAAndBump, type Connection } from "solana-kite";
+import { initTxLog, logTx } from "./txLogger";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -114,22 +116,23 @@ describe("rbac (trolley)", async () => {
     bump: number;
   }>;
 
+  // send() — submits a tx, logs the explorer URL, returns the signature
+  let send: (
+    description: string,
+    ix: Parameters<typeof connection.sendTransactionFromInstructions>[0]["instructions"][0],
+  ) => Promise<string>;
+
   const CLUSTER = process.env.CLUSTER || "localnet";
-  const APP_NAME = "my-app";
+  const APP_NAME = new Date().toISOString();
   const EDITOR_ROLE = "editor";
   const VIEWER_ROLE = "viewer";
   const RESOURCE_POSTS = "posts";
   const RESOURCE_USERS = "users";
-  // bit 0 = posts, bit 1 = users
-  const EDITOR_PERMISSIONS = 3n; // 0b11 — posts + users
-  const VIEWER_PERMISSIONS = 1n; // 0b01 — posts only
+  const EDITOR_PERMISSIONS = 3n; // 00..11 — posts + users
+  const VIEWER_PERMISSIONS = 1n; // 00..01 — posts only
 
-  // ── error assertion helpers ──────────────────────────────────────────────
+  // ── error assertion helper ───────────────────────────────────────────────
 
-  /**
-   * Assert a transaction fails and that the logs/error contain the given
-   * error identifier (e.g. "Unauthorized" or "6000").
-   */
   async function expectTxError(
     ix: Parameters<
       typeof connection.sendTransactionFromInstructions
@@ -158,15 +161,28 @@ describe("rbac (trolley)", async () => {
     await sleep(2000);
     connection = connect(CLUSTER);
 
+    initTxLog(CLUSTER);
+
+    send = async (description, ix) => {
+      const sig = await connection.sendTransactionFromInstructions({
+        feePayer: superAdmin,
+        instructions: [ix],
+        commitment: "confirmed",
+      });
+      logTx(description, sig, CLUSTER);
+      return sig;
+    };
+
     superAdmin =
-      process.env.KEYPAIR_BYTES && CLUSTER === "devnet"
+      process.env.KEYPAIR_BYTES &&
+      (CLUSTER === "devnet" || CLUSTER === "helius-devnet")
         ? await createKeyPairSignerFromBytes(
             new Uint8Array(JSON.parse(process.env.KEYPAIR_BYTES)),
           )
         : await connection.createWallet();
 
-    alice = await connection.createWallet();
-    bob = await connection.createWallet();
+    alice = await generateKeyPairSigner();
+    bob = await generateKeyPairSigner();
 
     applicationPda = await getAppPda(superAdmin.address, APP_NAME);
     editorRolePda = await getRolePda(applicationPda, EDITOR_ROLE);
@@ -218,16 +234,14 @@ describe("rbac (trolley)", async () => {
 
   describe("initialize_application", () => {
     it("super admin can initialize an application", async () => {
-      const ix = getInitializeApplicationInstruction({
-        application: applicationPda,
-        authority: superAdmin,
-        appName: APP_NAME,
-      });
-      await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [ix],
-        commitment: "confirmed",
-      });
+      await send(
+        "initialize_application",
+        getInitializeApplicationInstruction({
+          application: applicationPda,
+          authority: superAdmin,
+          appName: APP_NAME,
+        }),
+      );
 
       const data = await getApplicationAccount(applicationPda);
       expect(data.authority).toBe(superAdmin.address);
@@ -236,12 +250,14 @@ describe("rbac (trolley)", async () => {
     });
 
     it("cannot initialize the same application twice", async () => {
-      const ix = getInitializeApplicationInstruction({
-        application: applicationPda,
-        authority: superAdmin,
-        appName: APP_NAME,
-      });
-      await expectTxError(ix, "already in use");
+      await expectTxError(
+        getInitializeApplicationInstruction({
+          application: applicationPda,
+          authority: superAdmin,
+          appName: APP_NAME,
+        }),
+        "already in use",
+      );
     });
   });
 
@@ -253,17 +269,14 @@ describe("rbac (trolley)", async () => {
         [0, RESOURCE_POSTS],
         [1, RESOURCE_USERS],
       ] as const) {
-        await connection.sendTransactionFromInstructions({
-          feePayer: superAdmin,
-          instructions: [
-            getAddResourceInstruction({
-              application: applicationPda,
-              authority: superAdmin,
-              resourceName: name,
-            }),
-          ],
-          commitment: "confirmed",
-        });
+        await send(
+          `add_resource (${name})`,
+          getAddResourceInstruction({
+            application: applicationPda,
+            authority: superAdmin,
+            resourceName: name,
+          }),
+        );
 
         const data = await getApplicationAccount(applicationPda);
         expect(data.resourceCount).toBe(i + 1);
@@ -278,12 +291,11 @@ describe("rbac (trolley)", async () => {
       await expectTxError(
         getAddResourceInstruction({
           application: applicationPda,
-          authority: alice, // not the super admin
+          authority: alice,
           resourceName: "secrets",
         }),
-        "Error", // has_one = authority constraint rejection
+        "Error",
       );
-      // resource_count must be unchanged
       const data = await getApplicationAccount(applicationPda);
       expect(data.resourceCount).toBe(2);
     });
@@ -297,19 +309,16 @@ describe("rbac (trolley)", async () => {
         [0, EDITOR_ROLE, EDITOR_PERMISSIONS, editorRolePda],
         [1, VIEWER_ROLE, VIEWER_PERMISSIONS, viewerRolePda],
       ] as const) {
-        await connection.sendTransactionFromInstructions({
-          feePayer: superAdmin,
-          instructions: [
-            getCreateRoleInstruction({
-              application: applicationPda,
-              role: pda,
-              authority: superAdmin,
-              roleName: name,
-              permissions: perms,
-            }),
-          ],
-          commitment: "confirmed",
-        });
+        await send(
+          `create_role (${name})`,
+          getCreateRoleInstruction({
+            application: applicationPda,
+            role: pda,
+            authority: superAdmin,
+            roleName: name,
+            permissions: perms,
+          }),
+        );
 
         const role = await getRoleAccount(pda);
         expect(role.roleIndex).toBe(i);
@@ -327,40 +336,29 @@ describe("rbac (trolley)", async () => {
 
   describe("update_role_permissions", () => {
     it("super admin can overwrite a role permissions bitmask", async () => {
-      const restrictedPerms = 1n; // posts only
+      const restrictedPerms = 1n;
 
-      await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [
-          getUpdateRolePermissionsInstruction({
-            application: applicationPda,
-            role: editorRolePda,
-            authority: superAdmin,
-            newPermissions: restrictedPerms,
-          }),
-        ],
-        commitment: "confirmed",
-      });
-      expect((await getRoleAccount(editorRolePda)).permissions).toBe(
-        restrictedPerms,
+      await send(
+        "update_role_permissions (editor → posts only)",
+        getUpdateRolePermissionsInstruction({
+          application: applicationPda,
+          role: editorRolePda,
+          authority: superAdmin,
+          newPermissions: restrictedPerms,
+        }),
       );
+      expect((await getRoleAccount(editorRolePda)).permissions).toBe(restrictedPerms);
 
-      // restore
-      await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [
-          getUpdateRolePermissionsInstruction({
-            application: applicationPda,
-            role: editorRolePda,
-            authority: superAdmin,
-            newPermissions: EDITOR_PERMISSIONS,
-          }),
-        ],
-        commitment: "confirmed",
-      });
-      expect((await getRoleAccount(editorRolePda)).permissions).toBe(
-        EDITOR_PERMISSIONS,
+      await send(
+        "update_role_permissions (editor → restore full)",
+        getUpdateRolePermissionsInstruction({
+          application: applicationPda,
+          role: editorRolePda,
+          authority: superAdmin,
+          newPermissions: EDITOR_PERMISSIONS,
+        }),
       );
+      expect((await getRoleAccount(editorRolePda)).permissions).toBe(EDITOR_PERMISSIONS);
     });
   });
 
@@ -368,22 +366,19 @@ describe("rbac (trolley)", async () => {
 
   describe("create_user", () => {
     it("creates UserAccounts with roles = 0 for each wallet", async () => {
-      for (const [user, pda] of [
-        [alice, aliceUserPda],
-        [bob, bobUserPda],
+      for (const [label, user, pda] of [
+        ["alice", alice, aliceUserPda],
+        ["bob",   bob,   bobUserPda],
       ] as const) {
-        await connection.sendTransactionFromInstructions({
-          feePayer: superAdmin,
-          instructions: [
-            getCreateUserInstruction({
-              application: applicationPda,
-              userAccount: pda,
-              authority: superAdmin,
-              userPubkey: user.address,
-            }),
-          ],
-          commitment: "confirmed",
-        });
+        await send(
+          `create_user (${label})`,
+          getCreateUserInstruction({
+            application: applicationPda,
+            userAccount: pda,
+            authority: superAdmin,
+            userPubkey: user.address,
+          }),
+        );
 
         const data = await getUserAccount(pda);
         expect(data.roles).toBe(0n);
@@ -397,52 +392,39 @@ describe("rbac (trolley)", async () => {
 
   describe("grant_role", () => {
     it("sets the correct bit for each role granted to alice", async () => {
-      // Grant editor (role_index=0) → expect bit 0
-      await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [
-          getGrantRoleInstruction({
-            application: applicationPda,
-            role: editorRolePda,
-            userAccount: aliceUserPda,
-            authority: superAdmin,
-          }),
-        ],
-        commitment: "confirmed",
-      });
-      expect((await getUserAccount(aliceUserPda)).roles).toBe(1n); // 0b01
+      await send(
+        "grant_role (alice ← editor)",
+        getGrantRoleInstruction({
+          application: applicationPda,
+          role: editorRolePda,
+          userAccount: aliceUserPda,
+          authority: superAdmin,
+        }),
+      );
+      expect((await getUserAccount(aliceUserPda)).roles).toBe(1n);
 
-      // Grant viewer (role_index=1) → expect bits 0 and 1
-      await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [
-          getGrantRoleInstruction({
-            application: applicationPda,
-            role: viewerRolePda,
-            userAccount: aliceUserPda,
-            authority: superAdmin,
-          }),
-        ],
-        commitment: "confirmed",
-      });
-      expect((await getUserAccount(aliceUserPda)).roles).toBe(3n); // 0b11
+      await send(
+        "grant_role (alice ← viewer)",
+        getGrantRoleInstruction({
+          application: applicationPda,
+          role: viewerRolePda,
+          userAccount: aliceUserPda,
+          authority: superAdmin,
+        }),
+      );
+      expect((await getUserAccount(aliceUserPda)).roles).toBe(3n);
     });
 
     it("granting an already-held role is idempotent (|= does not flip bits)", async () => {
-      // alice already has both roles (roles = 3n). Grant editor again.
-      await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [
-          getGrantRoleInstruction({
-            application: applicationPda,
-            role: editorRolePda,
-            userAccount: aliceUserPda,
-            authority: superAdmin,
-          }),
-        ],
-        commitment: "confirmed",
-      });
-      // Must stay 3n — no phantom bits added
+      await send(
+        "grant_role (alice ← editor, duplicate — idempotency check)",
+        getGrantRoleInstruction({
+          application: applicationPda,
+          role: editorRolePda,
+          userAccount: aliceUserPda,
+          authority: superAdmin,
+        }),
+      );
       expect((await getUserAccount(aliceUserPda)).roles).toBe(3n);
     });
   });
@@ -451,37 +433,28 @@ describe("rbac (trolley)", async () => {
 
   describe("revoke_role", () => {
     it("clears the correct bit when revoking a role", async () => {
-      // alice has roles = 3n (0b11). Revoke viewer (bit 1) → expect 1n (0b01)
-      await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [
-          getRevokeRoleInstruction({
-            application: applicationPda,
-            role: viewerRolePda,
-            userAccount: aliceUserPda,
-            authority: superAdmin,
-          }),
-        ],
-        commitment: "confirmed",
-      });
-      expect((await getUserAccount(aliceUserPda)).roles).toBe(1n); // editor only
+      await send(
+        "revoke_role (alice ✗ viewer)",
+        getRevokeRoleInstruction({
+          application: applicationPda,
+          role: viewerRolePda,
+          userAccount: aliceUserPda,
+          authority: superAdmin,
+        }),
+      );
+      expect((await getUserAccount(aliceUserPda)).roles).toBe(1n);
     });
 
     it("revoking a role the user does not hold is idempotent (&= ~ does not corrupt)", async () => {
-      // alice does not have viewer. Revoke viewer again.
-      await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [
-          getRevokeRoleInstruction({
-            application: applicationPda,
-            role: viewerRolePda,
-            userAccount: aliceUserPda,
-            authority: superAdmin,
-          }),
-        ],
-        commitment: "confirmed",
-      });
-      // Must stay 1n — editor bit untouched
+      await send(
+        "revoke_role (alice ✗ viewer, duplicate — idempotency check)",
+        getRevokeRoleInstruction({
+          application: applicationPda,
+          role: viewerRolePda,
+          userAccount: aliceUserPda,
+          authority: superAdmin,
+        }),
+      );
       expect((await getUserAccount(aliceUserPda)).roles).toBe(1n);
     });
   });
@@ -490,23 +463,18 @@ describe("rbac (trolley)", async () => {
 
   describe("check_authorization", () => {
     it("succeeds silently when the user holds the role", async () => {
-      // alice has editor (bit 0 set)
-      const result = await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [
-          getCheckAuthorizationInstruction({
-            application: applicationPda,
-            role: editorRolePda,
-            userAccount: aliceUserPda,
-          }),
-        ],
-        commitment: "confirmed",
-      });
-      expect(result).toBeTruthy();
+      const sig = await send(
+        "check_authorization (alice → editor, PASS)",
+        getCheckAuthorizationInstruction({
+          application: applicationPda,
+          role: editorRolePda,
+          userAccount: aliceUserPda,
+        }),
+      );
+      expect(sig).toBeTruthy();
     });
 
     it("fails with 6000 Unauthorized when the user lacks the role", async () => {
-      // alice had viewer revoked — checking viewer must fail
       await expectTxError(
         getCheckAuthorizationInstruction({
           application: applicationPda,
@@ -518,7 +486,6 @@ describe("rbac (trolley)", async () => {
     });
 
     it("fails with 6000 when the user has no roles at all", async () => {
-      // bob was never granted anything
       await expectTxError(
         getCheckAuthorizationInstruction({
           application: applicationPda,
@@ -530,45 +497,35 @@ describe("rbac (trolley)", async () => {
     });
 
     it("fails with 6000 after a previously-held role is revoked", async () => {
-      // Grant editor to bob, confirm it passes, then revoke and confirm it fails.
-      await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [
-          getGrantRoleInstruction({
-            application: applicationPda,
-            role: editorRolePda,
-            userAccount: bobUserPda,
-            authority: superAdmin,
-          }),
-        ],
-        commitment: "confirmed",
-      });
+      await send(
+        "grant_role (bob ← editor, for revocation test)",
+        getGrantRoleInstruction({
+          application: applicationPda,
+          role: editorRolePda,
+          userAccount: bobUserPda,
+          authority: superAdmin,
+        }),
+      );
 
-      const before = await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [
-          getCheckAuthorizationInstruction({
-            application: applicationPda,
-            role: editorRolePda,
-            userAccount: bobUserPda,
-          }),
-        ],
-        commitment: "confirmed",
-      });
+      const before = await send(
+        "check_authorization (bob → editor, PASS)",
+        getCheckAuthorizationInstruction({
+          application: applicationPda,
+          role: editorRolePda,
+          userAccount: bobUserPda,
+        }),
+      );
       expect(before).toBeTruthy();
 
-      await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [
-          getRevokeRoleInstruction({
-            application: applicationPda,
-            role: editorRolePda,
-            userAccount: bobUserPda,
-            authority: superAdmin,
-          }),
-        ],
-        commitment: "confirmed",
-      });
+      await send(
+        "revoke_role (bob ✗ editor)",
+        getRevokeRoleInstruction({
+          application: applicationPda,
+          role: editorRolePda,
+          userAccount: bobUserPda,
+          authority: superAdmin,
+        }),
+      );
 
       await expectTxError(
         getCheckAuthorizationInstruction({
@@ -585,23 +542,18 @@ describe("rbac (trolley)", async () => {
 
   describe("deactivate_role", () => {
     it("super admin can deactivate a role", async () => {
-      await connection.sendTransactionFromInstructions({
-        feePayer: superAdmin,
-        instructions: [
-          getDeactivateRoleInstruction({
-            application: applicationPda,
-            role: viewerRolePda,
-            authority: superAdmin,
-          }),
-        ],
-        commitment: "confirmed",
-      });
+      await send(
+        "deactivate_role (viewer)",
+        getDeactivateRoleInstruction({
+          application: applicationPda,
+          role: viewerRolePda,
+          authority: superAdmin,
+        }),
+      );
       expect((await getRoleAccount(viewerRolePda)).isActive).toBe(false);
     });
 
     it("check_authorization against an inactive role fails with 6001 RoleInactive", async () => {
-      // The role.is_active constraint fires at account-validation time,
-      // before the bitmask is ever read — user state is irrelevant.
       await expectTxError(
         getCheckAuthorizationInstruction({
           application: applicationPda,
@@ -629,10 +581,6 @@ describe("rbac (trolley)", async () => {
 
   describe("bitmask sanity", () => {
     it("alice ends the suite with only editor (bit 0 set, bit 1 clear)", async () => {
-      // Full role history for alice:
-      //   grant editor  → roles = 1n (0b01)
-      //   grant viewer  → roles = 3n (0b11)
-      //   revoke viewer → roles = 1n (0b01)  ← final state
       const data = await getUserAccount(aliceUserPda);
       expect((data.roles >> 0n) & 1n).toBe(1n); // editor present
       expect((data.roles >> 1n) & 1n).toBe(0n); // viewer absent

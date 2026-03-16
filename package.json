@@ -6,7 +6,8 @@
     "generate": "codama run js",
     "setup": "anchor build && codama run js",
     "test": "anchor test",
-    "test:devnet": "CLUSTER=DEVNET anchor test --provider devnet --skip-deploy"
+    "test:devnet": "CLUSTER=devnet anchor test --skip-local-validator --skip-deploy",
+    "test:helius": "CLUSTER=helius-devnet anchor test --skip-local-validator --skip-deploy"
   },
   "dependencies": {
     "@solana/kit": "^6.3.1",
