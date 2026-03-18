@@ -1,4 +1,4 @@
-import type { ReactNode, MouseEventHandler } from "react";
+import type { ReactNode, MouseEventHandler, CSSProperties } from "react";
 
 type BtnVariant = "default" | "danger" | "green";
 
@@ -9,6 +9,7 @@ interface BtnProps {
   variant?: BtnVariant;
   small?: boolean;
   className?: string; // 1. Add className to the interface
+  style?: CSSProperties;
 }
 
 const variantClasses: Record<BtnVariant, string> = {
@@ -24,6 +25,7 @@ export function Btn({
   variant = "default",
   small,
   className = "", // 2. Destructure with a default empty string
+  style,
 }: BtnProps) {
   return (
     <button
@@ -36,6 +38,7 @@ export function Btn({
         variantClasses[variant],
         className, // 3. Add the custom className to the array
       ].join(" ")}
+      style={style}
     >
       {children}
     </button>
