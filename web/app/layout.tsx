@@ -3,10 +3,10 @@ import "./globals.css";
 import { Providers } from "./components/providers";
 
 const ibmPlexMono = IBM_Plex_Mono({
-  weight: ['100', '300', '500'],
-  variable: '--font-ibm-plex-mono',
-  subsets: ["latin"]
-})
+  weight: ["100", "300", "500"],
+  variable: "--font-ibm-plex-mono",
+  subsets: ["latin"],
+});
 
 const inter = Inter({
   variable: "--font-inter",
