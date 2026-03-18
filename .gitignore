@@ -5,7 +5,6 @@ target
 node_modules
 test-ledger
 .yarn
-web/client
 web/node_modules
 web/dist
 .env
