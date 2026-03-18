@@ -19,7 +19,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@client/*": ["./client/src/generated/*"]
     }
   },
   "include": [

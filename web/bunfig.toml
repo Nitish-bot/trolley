@@ -1,0 +1,2 @@
+[alias]
+"@client/" = "./client/src/generated/"

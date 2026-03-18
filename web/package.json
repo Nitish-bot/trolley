@@ -1,61 +1,33 @@
 {
-  "name": "nextjs-anchor",
-  "description": "Next.js, Tailwind, @solana/react-hooks, Anchor vault program",
-  "keywords": [
-    "anchor",
-    "kit",
-    "nextjs",
-    "react",
-    "solana-kit",
-    "tailwind",
-    "typescript"
-  ],
-  "create-solana-dapp": {
-    "rename": {
-      "scaffold": {
-        "to": "{{name}}",
-        "paths": [
-          "app"
-        ]
-      }
-    }
-  },
-  "version": "0.0.0",
+  "name": "trolley-demo",
+  "description": "demo app for trolley the RBAC system onchain",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
-    "anchor-build": "cd anchor && anchor build",
-    "anchor-test": "cd anchor && anchor test --skip-deploy",
     "build": "next build",
-    "ci": "npm run build && npm run lint && npm run format:check",
-    "codama:js": "codama run js",
     "dev": "next dev",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "lint": "eslint",
-    "setup": "npm run anchor-build && npm run codama:js",
-    "start": "next start"
+    "start": "next start",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix ."
   },
   "dependencies": {
-    "@solana/client": "^1.2.0",
     "@solana/kit": "^6.3.1",
-    "@solana/react-hooks": "^1.1.5",
+    "@solana/react-hooks": "^1.4.1",
     "next": "16.0.10",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "ws": "^8.18.3"
   },
   "devDependencies": {
-    "@codama/nodes-from-anchor": "^1.3.8",
-    "@codama/renderers-js": "^1.5.5",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/bun": "^1.3.10",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "codama": "^1.5.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
     "prettier": "^3.6.2",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "tailwindcss": "^4"
   }
 }
