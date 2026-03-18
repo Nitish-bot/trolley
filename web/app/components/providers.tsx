@@ -1,15 +1,17 @@
 "use client";
 
-import { SolanaProvider } from "@solana/react-hooks";
 import { PropsWithChildren } from "react";
 
-import { autoDiscover, createClient } from "@solana/client";
-
-const client = createClient({
-  endpoint: "https://api.devnet.solana.com",
-  walletConnectors: autoDiscover(),
-});
+import { ChainContextProvider } from "../context/chain-context-provider";
+import { SelectedWalletAccountContextProvider } from "../context/selected-wallet-account-context-provider";
+import { ConnectionContextProvider } from "../context/connection-context-provider";
 
 export function Providers({ children }: PropsWithChildren) {
-  return <SolanaProvider client={client}>{children}</SolanaProvider>;
+  return (
+    <ChainContextProvider>
+      <SelectedWalletAccountContextProvider>
+        <ConnectionContextProvider>{children}</ConnectionContextProvider>
+      </SelectedWalletAccountContextProvider>
+    </ChainContextProvider>
+  );
 }

@@ -1,6 +1,7 @@
 import { IBM_Plex_Mono, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./components/providers";
+import { Header } from "./components/header";
 
 const ibmPlexMono = IBM_Plex_Mono({
   weight: ["100", "300", "500"],
@@ -31,6 +32,7 @@ export default function RootLayout({
           suppressHydrationWarning
           className={`${ibmPlexMono.variable} ${inter.variable} ${geistMono.variable} antialiased`}
         >
+          <Header />
           {children}
         </body>
       </Providers>

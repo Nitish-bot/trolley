@@ -23,8 +23,8 @@ import {
   getGrantRoleInstruction,
   getRevokeRoleInstruction,
   getCheckAuthorizationInstruction,
-  ResourceMeta,
 } from "@client/index";
+import type { ResourceMeta } from "@client/index"
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -185,18 +185,18 @@ export class TrolleyClient {
     return appPda(this.signer.address, appName);
   }
 
-  async getRolePda(roleNameOrAppPda: Address, roleName?: string): Promise<Address> {
+  async getRolePda(roleNameOrAppPda: Address, appPda: Address | null, roleName?: string): Promise<Address> {
     // Overload: getRolePda(appPdaAddress, roleName) | getRolePda(roleName) if _appPda cached
     if (roleName !== undefined) {
       return rolePda(roleNameOrAppPda, roleName);
     }
-    if (!this._appPda) throw new Error("No application loaded. Call initializeApplication or fetchApplication first.");
-    return rolePda(this._appPda, roleNameOrAppPda as string);
+    if (!appPda) throw new Error("No application loaded. Call initializeApplication or fetchApplication first.");
+    return rolePda(appPda, roleNameOrAppPda as string);
   }
 
-  async getUserPda(userAddress: Address): Promise<Address> {
-    if (!this._appPda) throw new Error("No application loaded.");
-    return userPda(this._appPda, userAddress);
+  async getUserPda(userAddress: Address, appPda: Address | null): Promise<Address> {
+    if (!appPda) throw new Error("No application loaded.");
+    return userPda(appPda, userAddress);
   }
 
   // ── 1. initialize_application ──────────────────────────────────────────────
@@ -210,17 +210,16 @@ export class TrolleyClient {
         appName,
       }),
     );
-    this._appPda = application;
     return { ...result, applicationPda: application };
   }
 
   // ── 2. add_resource ────────────────────────────────────────────────────────
 
-  async addResource(resourceName: string): Promise<TxResult> {
-    if (!this._appPda) throw new Error("No application loaded.");
+  async addResource(resourceName: string, appPda: Address | null): Promise<TxResult> {
+    if (!appPda) throw new Error("No application loaded.");
     return this.send(
       getAddResourceInstruction({
-        application:  this._appPda,
+        application:  appPda,
         authority:    this.signer,
         resourceName,
       }),
@@ -229,12 +228,12 @@ export class TrolleyClient {
 
   // ── 3. create_role ─────────────────────────────────────────────────────────
 
-  async createRole(roleName: string, permissions: bigint): Promise<TxResult & { rolePda: Address }> {
-    if (!this._appPda) throw new Error("No application loaded.");
-    const role = await rolePda(this._appPda, roleName);
+  async createRole(roleName: string, permissions: bigint, appPda: Address | null): Promise<TxResult & { rolePda: Address }> {
+    if (!appPda) throw new Error("No application loaded.");
+    const role = await rolePda(appPda, roleName);
     const result = await this.send(
       getCreateRoleInstruction({
-        application: this._appPda,
+        application: appPda,
         role,
         authority:   this.signer,
         roleName,
@@ -246,12 +245,12 @@ export class TrolleyClient {
 
   // ── 4. update_role_permissions ─────────────────────────────────────────────
 
-  async updateRolePermissions(roleName: string, newPermissions: bigint): Promise<TxResult> {
-    if (!this._appPda) throw new Error("No application loaded.");
-    const role = await rolePda(this._appPda, roleName);
+  async updateRolePermissions(roleName: string, newPermissions: bigint, appPda: Address | null): Promise<TxResult> {
+    if (!appPda) throw new Error("No application loaded.");
+    const role = await rolePda(appPda, roleName);
     return this.send(
       getUpdateRolePermissionsInstruction({
-        application:    this._appPda,
+        application:    appPda,
         role,
         authority:      this.signer,
         newPermissions,
@@ -261,12 +260,12 @@ export class TrolleyClient {
 
   // ── 5. deactivate_role ─────────────────────────────────────────────────────
 
-  async deactivateRole(roleName: string): Promise<TxResult> {
-    if (!this._appPda) throw new Error("No application loaded.");
-    const role = await rolePda(this._appPda, roleName);
+  async deactivateRole(roleName: string, appPda: Address | null): Promise<TxResult> {
+    if (!appPda) throw new Error("No application loaded.");
+    const role = await rolePda(appPda, roleName);
     return this.send(
       getDeactivateRoleInstruction({
-        application: this._appPda,
+        application: appPda,
         role,
         authority:   this.signer,
       }),
@@ -275,12 +274,12 @@ export class TrolleyClient {
 
   // ── 6. create_user ─────────────────────────────────────────────────────────
 
-  async createUser(userAddress: Address): Promise<TxResult & { userAccountPda: Address }> {
-    if (!this._appPda) throw new Error("No application loaded.");
-    const userAccount = await userPda(this._appPda, userAddress);
+  async createUser(userAddress: Address, appPda: Address | null): Promise<TxResult & { userAccountPda: Address }> {
+    if (!appPda) throw new Error("No application loaded.");
+    const userAccount = await userPda(appPda, userAddress);
     const result = await this.send(
       getCreateUserInstruction({
-        application: this._appPda,
+        application: appPda,
         userAccount,
         authority:   this.signer,
         userPubkey:  userAddress,
@@ -291,15 +290,15 @@ export class TrolleyClient {
 
   // ── 7. grant_role ──────────────────────────────────────────────────────────
 
-  async grantRole(roleName: string, userAddress: Address): Promise<TxResult> {
-    if (!this._appPda) throw new Error("No application loaded.");
+  async grantRole(roleName: string, userAddress: Address, appPda: Address | null): Promise<TxResult> {
+    if (!appPda) throw new Error("No application loaded.");
     const [role, userAccount] = await Promise.all([
-      rolePda(this._appPda, roleName),
-      userPda(this._appPda, userAddress),
+      rolePda(appPda, roleName),
+      userPda(appPda, userAddress),
     ]);
     return this.send(
       getGrantRoleInstruction({
-        application: this._appPda,
+        application: appPda,
         role,
         userAccount,
         authority:   this.signer,
@@ -309,15 +308,15 @@ export class TrolleyClient {
 
   // ── 8. revoke_role ─────────────────────────────────────────────────────────
 
-  async revokeRole(roleName: string, userAddress: Address): Promise<TxResult> {
-    if (!this._appPda) throw new Error("No application loaded.");
+  async revokeRole(roleName: string, userAddress: Address, appPda: Address | null): Promise<TxResult> {
+    if (!appPda) throw new Error("No application loaded.");
     const [role, userAccount] = await Promise.all([
-      rolePda(this._appPda, roleName),
-      userPda(this._appPda, userAddress),
+      rolePda(appPda, roleName),
+      userPda(appPda, userAddress),
     ]);
     return this.send(
       getRevokeRoleInstruction({
-        application: this._appPda,
+        application: appPda,
         role,
         userAccount,
         authority:   this.signer,
@@ -334,16 +333,16 @@ export class TrolleyClient {
   //   error code 6001   → { status: "inactive", code: 6001 }
   //   anything else     → { status: "error",    code, message }
 
-  async checkAuthorization(roleName: string, userAddress: Address): Promise<AuthResult> {
-    if (!this._appPda) return { status: "error", code: -1, message: "No application loaded." };
+  async checkAuthorization(roleName: string, userAddress: Address, appPda: Address | null): Promise<AuthResult> {
+    if (!appPda) return { status: "error", code: -1, message: "No application loaded." };
     try {
       const [role, userAccount] = await Promise.all([
-        rolePda(this._appPda, roleName),
-        userPda(this._appPda, userAddress),
+        rolePda(appPda, roleName),
+        userPda(appPda, userAddress),
       ]);
       await this.send(
         getCheckAuthorizationInstruction({
-          application: this._appPda,
+          application: appPda,
           role,
           userAccount,
         }),
@@ -370,7 +369,6 @@ export class TrolleyClient {
     const all     = await getAll();
     const account = all.find(a => a.address === address);
     if (!account || !account.exists) throw new Error(`ApplicationAccount not found: ${address}`);
-    this._appPda  = address;
     const d       = account.data;
     return {
       address,
@@ -383,8 +381,8 @@ export class TrolleyClient {
     };
   }
 
-  async fetchAllRoles(): Promise<RoleAccount[]> {
-    if (!this._appPda) throw new Error("No application loaded.");
+  async fetchAllRoles(appPda: Address | null): Promise<RoleAccount[]> {
+    if (!appPda) throw new Error("No application loaded.");
     const getAll = this.connection.getAccountsFactory(
       TROLLEY_PROGRAM_ADDRESS,
       ROLE_ACCOUNT_DISCRIMINATOR,
@@ -392,7 +390,7 @@ export class TrolleyClient {
     );
     const all = await getAll();
     return all
-      .filter(a => a.exists && a.data.app === this._appPda)
+      .filter(a => a.exists && a.data.app === appPda)
       .map(a => {
         assertAccountExists(a);
         const d = a.data;
@@ -409,9 +407,9 @@ export class TrolleyClient {
       .sort((a, b) => a.roleIndex - b.roleIndex);
   }
 
-  async fetchUser(userAddress: Address): Promise<UserAccount> {
-    if (!this._appPda) throw new Error("No application loaded.");
-    const address = await userPda(this._appPda, userAddress);
+  async fetchUser(userAddress: Address, appPda: Address | null): Promise<UserAccount> {
+    if (!appPda) throw new Error("No application loaded.");
+    const address = await userPda(appPda, userAddress);
     const getAll  = this.connection.getAccountsFactory(
       TROLLEY_PROGRAM_ADDRESS,
       USER_ACCOUNT_DISCRIMINATOR,
@@ -424,8 +422,8 @@ export class TrolleyClient {
     return { address, app: d.app, user: d.user, roles: d.roles, bump: d.bump };
   }
 
-  async fetchAllUsers(): Promise<UserAccount[]> {
-    if (!this._appPda) throw new Error("No application loaded.");
+  async fetchAllUsers(appPda: Address | null): Promise<UserAccount[]> {
+    if (!appPda) throw new Error("No application loaded.");
     const getAll = this.connection.getAccountsFactory(
       TROLLEY_PROGRAM_ADDRESS,
       USER_ACCOUNT_DISCRIMINATOR,
@@ -433,7 +431,7 @@ export class TrolleyClient {
     );
     const all = await getAll();
     return all
-      .filter(a => a.exists && a.data.app === this._appPda)
+      .filter(a => a.exists && a.data.app === appPda)
       .map(a => {
         assertAccountExists(a)
         const d = a.data;

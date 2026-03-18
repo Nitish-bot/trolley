@@ -10,6 +10,7 @@ interface BtnProps {
   small?: boolean;
   className?: string; // 1. Add className to the interface
   style?: CSSProperties;
+  title?: string;
 }
 
 const variantClasses: Record<BtnVariant, string> = {
@@ -26,6 +27,7 @@ export function Btn({
   small,
   className = "", // 2. Destructure with a default empty string
   style,
+  title,
 }: BtnProps) {
   return (
     <button
@@ -39,6 +41,7 @@ export function Btn({
         className, // 3. Add the custom className to the array
       ].join(" ")}
       style={style}
+      title={title}
     >
       {children}
     </button>

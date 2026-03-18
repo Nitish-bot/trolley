@@ -16,7 +16,7 @@ const colorClasses: Record<PillColor, string> = {
 export function Pill({ children, color = "amber" }: PillProps) {
   return (
     <span
-      className={`text-[10px] tracking-[0.1em] border px-2 py-0.5 rounded-sm ${colorClasses[color]}`}
+      className={`text-[10px] tracking-widest border px-2 py-0.5 rounded-sm ${colorClasses[color]}`}
     >
       {children}
     </span>
