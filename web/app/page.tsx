@@ -102,7 +102,52 @@ export default function Page() {
   const [selectedWalletAccount] = useContext(SelectedWalletAccountContext);
 
   if (!selectedWalletAccount) {
-    return <div> sorry </div>;
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#0e1c2c",
+        }}
+        className="font-ibm-plex bg-trolley-bg text-trolley-text"
+      >
+        <div
+          style={{
+            background: "#162436",
+            border: "1px solid #38bdf850",
+            color: "#38bdf8",
+            padding: "32px 40px",
+            borderRadius: 8,
+            boxShadow: "0 4px 24px #000a",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 16,
+            maxWidth: 360,
+            fontSize: 16,
+            letterSpacing: "0.04em",
+          }}
+        >
+          <span style={{ fontSize: 32, marginBottom: 8 }}>🔒</span>
+          <span style={{ fontWeight: 600, marginBottom: 6 }}>
+            Please connect your wallet first
+          </span>
+          <span
+            style={{
+              fontSize: 13,
+              color: "#7dd3fc",
+              opacity: 0.8,
+              textAlign: "center",
+            }}
+          >
+            To use Trolley, connect a wallet using the button in the top right.
+            This lets you send transactions and manage roles securely.
+          </span>
+        </div>
+      </div>
+    );
   }
 
   return <TrolleyDemo wallet={selectedWalletAccount} />;
