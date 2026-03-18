@@ -1,7 +1,12 @@
-import type { Metadata } from "next";
-import { Geist_Mono, Inter } from "next/font/google";
+import { IBM_Plex_Mono, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./components/providers";
+
+const ibmPlexMono = IBM_Plex_Mono({
+  weight: ['100', '300', '500'],
+  variable: '--font-ibm-plex-mono',
+  subsets: ["latin"]
+})
 
 const inter = Inter({
   variable: "--font-inter",
@@ -14,16 +19,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Solana dApp Starter",
-  description: "A minimal Next.js starter powered by @solana/react-hooks",
-  icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
-  },
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -34,7 +29,7 @@ export default function RootLayout({
       <Providers>
         <body
           suppressHydrationWarning
-          className={`${inter.variable} ${geistMono.variable} antialiased`}
+          className={`${ibmPlexMono.variable} ${inter.variable} ${geistMono.variable} antialiased`}
         >
           {children}
         </body>

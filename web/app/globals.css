@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -46,6 +47,26 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Trolley RBAC demo theme */
+  --color-trolley-bg:          #060b12;
+  --color-trolley-panel:       #0b1520;
+  --color-trolley-card:        #0e1c2c;
+  --color-trolley-input:       #070d16;
+  --color-trolley-amber:       #e8a020;
+  --color-trolley-amber-mid:   #a06c12;
+  --color-trolley-green:       #22c55e;
+  --color-trolley-red:         #ef4444;
+  --color-trolley-blue:        #38bdf8;
+  --color-trolley-text:        #7a9cb8;
+  --color-trolley-text-hi:     #c8dff0;
+  --color-trolley-text-dim:    #304a60;
+  --color-trolley-border:      #162436;
+  --color-trolley-border-mid:  #1e3a54;
+  --font-ibm-plex: 'IBM Plex Mono', 'Courier New', monospace;
+  --animate-fade-up: fadeUp 0.25s ease;
+  --animate-fade-in: fadeIn 0.2s ease;
+  --animate-stamp: stamp 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 @layer base {
@@ -58,4 +79,29 @@
     font-family: var(--font-sans);
     color-scheme: light dark;
   }
+
+  select option {
+    background: #0b1520;
+    color: #c8dff0;
+  }
+
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1e3a54; border-radius: 2px; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes stamp {
+  0%   { opacity: 0; transform: scale(1.5) rotate(-6deg); }
+  65%  { transform: scale(0.97) rotate(-4deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-4deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
